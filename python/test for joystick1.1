@@ -1,0 +1,130 @@
+import pygame
+import random
+import time
+# joystick_module.py
+
+import PCF8591 as ADC
+import time
+
+def setup():
+    ADC.setup(0x48)  # Setup PCF8591
+
+def direction():
+    state = ['home', 'up', 'down', 'left', 'right', 'pressed']
+    # Logic to read joystick and return corresponding direction
+    return state[ADC.read(0) // 50]  # Example logic, adjust as per your joystick module
+
+
+pygame.init()
+
+SCREEN_WIDTH = 1600
+SCREEN_HEIGHT = 800
+DOT_SIZE = 10
+OBSTACLE_SIZE = 14
+BG_COLOR = (255, 255, 255)
+DOT_COLOR = (0, 0, 255)
+OBSTACLE_COLOR = (255, 0, 0)
+FPS = 60
+
+screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
+pygame.display.set_caption("Dot Game")
+
+clock = pygame.time.Clock()
+
+dot_x = SCREEN_WIDTH // 2
+dot_y = SCREEN_HEIGHT // 2
+
+# Setup ADC (Joystick module)
+setup()
+
+# List to hold obstacle information
+obstacles = []
+num_obstacles = 66  # Number of obstacles
+username = input("What is your name? ")
+
+# Create initial obstacles with random positions and velocities
+for _ in range(num_obstacles):
+    obstacle_x = random.randint(0, SCREEN_WIDTH - OBSTACLE_SIZE)
+    obstacle_y = random.randint(0, SCREEN_HEIGHT - OBSTACLE_SIZE)
+
+    if (SCREEN_WIDTH / 2 - 200 < obstacle_x < SCREEN_WIDTH / 2 + 200 and SCREEN_HEIGHT / 2 - 200 < obstacle_y < SCREEN_HEIGHT / 2 + 200 ):
+        obstacle_x += 200
+    
+    obstacle_dx = random.randint(-2, 2)  # Random initial velocity in x direction
+    obstacle_dy = random.randint(-2, 2)  # Random initial velocity in y direction
+    obstacles.append((obstacle_x, obstacle_y, obstacle_dx, obstacle_dy))
+start = time.time()  # Start time for scoring
+
+# Game loop
+running = True
+while running:
+    # Handle events
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            running = False
+
+    # Clear the screen
+    screen.fill(BG_COLOR)
+
+    # Update obstacles
+    for i in range(num_obstacles):
+        obstacle_x, obstacle_y, obstacle_dx, obstacle_dy = obstacles[i]
+
+        # Update obstacle position
+        obstacle_x += obstacle_dx
+        obstacle_y += obstacle_dy
+
+        # Check collision with screen edges for obstacle
+        if obstacle_x <= 0 or obstacle_x >= SCREEN_WIDTH - OBSTACLE_SIZE:
+            obstacle_dx = -obstacle_dx
+        if obstacle_y <= 0 or obstacle_y >= SCREEN_HEIGHT - OBSTACLE_SIZE:
+            obstacle_dy = -obstacle_dy
+
+        # Update obstacle information in list
+        obstacles[i] = (obstacle_x, obstacle_y, obstacle_dx, obstacle_dy)
+
+        # Draw the obstacle
+        pygame.draw.rect(screen, OBSTACLE_COLOR, (obstacle_x, obstacle_y, OBSTACLE_SIZE, OBSTACLE_SIZE))
+
+        # Check collision between dot and obstacle
+        if (dot_x + DOT_SIZE >= obstacle_x and dot_x <= obstacle_x + OBSTACLE_SIZE and
+            dot_y + DOT_SIZE >= obstacle_y and dot_y <= obstacle_y + OBSTACLE_SIZE):
+            end = time.time()
+            score = round(end - start)
+            print(f"Final Score: {score}")  # Print final score for debugging
+            running = False
+
+    # Get joystick direction
+    joystick_direction = direction()
+
+    # Move the dot based on joystick input
+    if joystick_direction == 'up':
+        dot_y -= 4
+    elif joystick_direction == 'down':
+        dot_y += 4
+    if joystick_direction == 'left':
+        dot_x -= 4
+    elif joystick_direction == 'right':
+        dot_x += 4
+
+    # Ensure dot stays within screen bounds
+    if dot_x < 0:
+        dot_x = 0
+    elif dot_x > SCREEN_WIDTH - DOT_SIZE:
+        dot_x = SCREEN_WIDTH - DOT_SIZE
+    if dot_y < 0:
+        dot_y = 0
+    elif dot_y > SCREEN_HEIGHT - DOT_SIZE:
+        dot_y = SCREEN_HEIGHT - DOT_SIZE
+
+    # Draw the dot (player)
+    pygame.draw.circle(screen, DOT_COLOR, (dot_x, dot_y), DOT_SIZE)
+
+    # Update the screen
+    pygame.display.flip()
+
+    # Cap the frame rate
+    clock.tick(FPS)
+
+# Quit Pygame
+pygame.quit()
